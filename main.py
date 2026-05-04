@@ -117,12 +117,16 @@ def update_lead(phone, data):
 # ── Notifications ─────────────────────────────────────────────────────────────
 
 def send_sms_alert(message):
-    """Send alert to business owner via WhatsApp."""
-    owner_wa = f"whatsapp:+256{OWNER_PHONE.lstrip('0')}"
+    """Send SMS alert to business owner."""
+    owner = f"+256{OWNER_PHONE.lstrip('0')}"
+    sms_from = os.environ.get("TWILIO_SMS_FROM", "")
+    if not sms_from:
+        print(f"[ALERT — set TWILIO_SMS_FROM to enable SMS]: {message}")
+        return
     try:
-        twilio.messages.create(body=message, from_=WHATSAPP_FROM, to=owner_wa)
+        twilio.messages.create(body=message, from_=sms_from, to=owner)
     except Exception as e:
-        print(f"Owner alert failed: {e}")
+        print(f"SMS alert failed: {e}")
 
 
 # ── AI response ───────────────────────────────────────────────────────────────
