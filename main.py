@@ -168,7 +168,7 @@ def webhook():
 
     resp = MessagingResponse()
 
-    # Ignore empty text messages (e.g. stickers sent without caption)
+    # Ignore empty text with no media (stickers, reactions, etc.)
     if not body and num_media == 0:
         return str(resp)
 
@@ -196,8 +196,8 @@ def webhook():
         resp.message(f"Welcome back! 😊 You're re-subscribed to {BUSINESS_NAME} updates. How can I help you today?")
         return str(resp)
 
-    # Screenshot received
-    if num_media > 0 and status in ["awaiting_screenshot", "interested", "joined", "new"]:
+    # Screenshot received — handle for any status
+    if num_media > 0:
         update_lead(phone, {"status": "screenshot_received", "screenshot_url": media_url})
         send_sms_alert(
             f"✅ NEW MEMBER VERIFIED — {BUSINESS_NAME}\n"
