@@ -132,7 +132,8 @@ def send_sms_alert(message):
 # ── AI response ───────────────────────────────────────────────────────────────
 
 def get_ai_reply(history, user_message):
-    messages = list(history) + [{"role": "user", "content": user_message}]
+    clean_history = [m for m in history if m.get("content", "").strip()]
+    messages = clean_history + [{"role": "user", "content": user_message}]
     r = ai.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=400,
@@ -166,6 +167,10 @@ def webhook():
     media_url = request.form.get("MediaUrl0", "")
 
     resp = MessagingResponse()
+
+    # Ignore empty text messages (e.g. stickers sent without caption)
+    if not body and num_media == 0:
+        return str(resp)
 
     # Subscription gate — disabled during testing, enable before going live
     # is_active, _ = check_subscription()
