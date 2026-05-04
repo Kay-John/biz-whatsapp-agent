@@ -199,13 +199,13 @@ def webhook():
     # Screenshot received — handle for any status
     if num_media > 0:
         update_lead(phone, {"status": "screenshot_received", "screenshot_url": media_url})
-        send_sms_alert(
-            f"✅ NEW MEMBER VERIFIED — {BUSINESS_NAME}\n"
-            f"Phone: {phone}\n"
-            f"Dashboard screenshot received.\n"
-            f"Screenshot: {media_url}\n"
-            f"Action: Verify their referral on your dashboard."
-        )
+        # send_sms_alert(
+        #     f"✅ NEW MEMBER VERIFIED — {BUSINESS_NAME}\n"
+        #     f"Phone: {phone}\n"
+        #     f"Dashboard screenshot received.\n"
+        #     f"Screenshot: {media_url}\n"
+        #     f"Action: Verify their referral on your dashboard."
+        # )
         resp.message(
             "Thank you for the screenshot! 🎉\n\n"
             "Our team will verify your registration shortly. "
@@ -224,11 +224,11 @@ def webhook():
 
     if user_confirmed_joining(body) and status not in ["screenshot_received", "awaiting_screenshot"]:
         status = "awaiting_screenshot"
-        send_sms_alert(
-            f"🔔 NEW SIGNUP — {BUSINESS_NAME}\n"
-            f"Phone: {phone}\n"
-            f"Confirmed joining and deposit. Waiting for dashboard screenshot."
-        )
+        # send_sms_alert(
+        #     f"🔔 NEW SIGNUP — {BUSINESS_NAME}\n"
+        #     f"Phone: {phone}\n"
+        #     f"Confirmed joining and deposit. Waiting for dashboard screenshot."
+        # )
     elif status == "new":
         status = "interested"
 
