@@ -34,8 +34,22 @@ CREATE TABLE IF NOT EXISTS bot_leads (
     UNIQUE (client_id, phone)
 );
 
+-- Payment submissions from /subscribe page
+CREATE TABLE IF NOT EXISTS payment_submissions (
+    id           SERIAL PRIMARY KEY,
+    client_id    TEXT NOT NULL,
+    name         TEXT,
+    phone        TEXT,
+    method       TEXT,
+    amount       TEXT,
+    reference    TEXT,
+    message      TEXT,
+    submitted_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 ALTER TABLE bot_clients DISABLE ROW LEVEL SECURITY;
 ALTER TABLE bot_leads DISABLE ROW LEVEL SECURITY;
+ALTER TABLE payment_submissions DISABLE ROW LEVEL SECURITY;
 
 -- Insert Starhela as first client (update expires_at when they pay)
 INSERT INTO bot_clients (client_id, business_name, owner_phone, expires_at, price_usd)

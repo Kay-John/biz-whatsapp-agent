@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subscribe — Starhela WhatsApp Bot</title>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#7c3aed">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Starhela">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; color: #1a202c; }
+  .header { background: linear-gradient(135deg, #7c3aed, #db2777); color: white; padding: 40px 20px; text-align: center; }
+  .header h1 { font-size: 2rem; margin-bottom: 8px; }
+  .header p { opacity: 0.9; font-size: 1rem; }
+  .container { max-width: 640px; margin: 0 auto; padding: 30px 20px; }
+  .card { background: white; border-radius: 12px; padding: 28px; margin-bottom: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  .card h2 { font-size: 1.2rem; color: #7c3aed; margin-bottom: 16px; border-bottom: 2px solid #ede9fe; padding-bottom: 10px; }
+  .price-box { background: linear-gradient(135deg, #7c3aed, #db2777); color: white; border-radius: 10px; padding: 24px; text-align: center; margin-bottom: 24px; }
+  .price-box .amount { font-size: 2.5rem; font-weight: bold; }
+  .price-box .period { opacity: 0.85; font-size: 0.95rem; margin-top: 4px; }
+  .feature-list { list-style: none; }
+  .feature-list li { padding: 8px 0; border-bottom: 1px solid #f0f4f8; display: flex; align-items: center; gap: 10px; }
+  .feature-list li:last-child { border: none; }
+  .feature-list li::before { content: '✅'; }
+  .payment-method { border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+  .payment-method h3 { font-size: 0.95rem; color: #4a5568; margin-bottom: 8px; font-weight: 600; }
+  .payment-method p { font-size: 0.9rem; color: #2d3748; line-height: 1.8; }
+  .payment-method .highlight { font-weight: bold; color: #7c3aed; }
+  form { display: flex; flex-direction: column; gap: 14px; }
+  label { font-size: 0.85rem; font-weight: 600; color: #4a5568; margin-bottom: 4px; display: block; }
+  input, select, textarea { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem; outline: none; transition: border 0.2s; }
+  input:focus, select:focus, textarea:focus { border-color: #7c3aed; }
+  button[type="submit"] { background: linear-gradient(135deg, #7c3aed, #db2777); color: white; border: none; padding: 14px; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 6px; }
+  button[type="submit"]:hover { opacity: 0.92; }
+  .note { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; font-size: 0.88rem; color: #92400e; margin-top: 8px; }
+  .success { background: #ecfdf5; border-left: 4px solid #10b981; padding: 16px; border-radius: 8px; color: #065f46; }
+  .footer { text-align: center; padding: 24px; color: #718096; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Starhela WhatsApp Bot</h1>
+  <p>AI-powered WhatsApp assistant for your earning platform</p>
+</div>
+
+<div class="container">
+
+  {% if success %}
+  <div class="success" style="margin-bottom:20px;">
+    ✅ <strong>Payment submission received!</strong> Your subscription will be activated within 24 hours after verification. Thank you!
+  </div>
+  {% endif %}
+
+  <!-- Pricing -->
+  <div class="card">
+    <div class="price-box">
+      <div class="amount">$180</div>
+      <div class="period">per 30 days</div>
+    </div>
+    <ul class="feature-list">
+      <li>24/7 AI WhatsApp assistant for your platform</li>
+      <li>Answers all member questions automatically</li>
+      <li>Handles scam objections with confidence</li>
+      <li>Tracks registrations & screenshot verification</li>
+      <li>24-hour follow-up on interested leads</li>
+      <li>Outreach dashboard — message new prospects</li>
+      <li>Full conversation history in dashboard</li>
+      <li>Hosted & maintained — no technical work needed</li>
+    </ul>
+  </div>
+
+  <!-- Payment Methods -->
+  <div class="card">
+    <h2>How to Pay</h2>
+
+    <div class="payment-method">
+      <h3>🏦 Bank Transfer — Equity Bank</h3>
+      <p>
+        Account Name: <span class="highlight">Kabanda John</span><br>
+        Account Number: <span class="highlight">1031103476548</span><br>
+        Bank: <span class="highlight">Equity Bank Uganda</span>
+      </p>
+    </div>
+
+    <div class="payment-method">
+      <h3>📱 MTN Mobile Money</h3>
+      <p>
+        Number: <span class="highlight">0793 482 095</span><br>
+        Name: <span class="highlight">Gumisiriza Charles Nsumba</span>
+      </p>
+    </div>
+
+    <div class="payment-method">
+      <h3>📱 Airtel Money</h3>
+      <p>
+        Number: <span class="highlight">0755 994 232</span><br>
+        Name: <span class="highlight">Kabanda John</span><br>
+        Merchant: <span class="highlight">JK Automation Ltd</span><br>
+        Merchant Code: <span class="highlight">7086971</span>
+      </p>
+      <div style="margin-top:12px; text-align:center;">
+        <p style="font-size:0.82rem; color:#718096; margin-bottom:8px;">Scan QR code to pay instantly:</p>
+        <img src="/static/airtel_qr.png.jpeg" alt="Airtel Money QR Code" style="width:200px; border:2px solid #e2e8f0; border-radius:8px;">
+      </div>
+    </div>
+
+    <div class="note">
+      After payment, fill in the form below with your payment details. Your subscription will be activated within 24 hours.
+    </div>
+  </div>
+
+  <!-- Submission Form -->
+  <div class="card">
+    <h2>Confirm Your Payment</h2>
+    <form method="POST" action="/subscribe">
+      <div>
+        <label>Your Full Name</label>
+        <input type="text" name="name" placeholder="e.g. John Doe" required>
+      </div>
+      <div>
+        <label>Your WhatsApp Number</label>
+        <input type="tel" name="phone" placeholder="e.g. 0771234567" required>
+      </div>
+      <div>
+        <label>Payment Method Used</label>
+        <select name="method" required>
+          <option value="">-- Select --</option>
+          <option value="bank">Bank Transfer — Equity Bank</option>
+          <option value="mtn">MTN Mobile Money</option>
+          <option value="airtel">Airtel Money</option>
+        </select>
+      </div>
+      <div>
+        <label>Amount Paid (UGX or USD)</label>
+        <input type="text" name="amount" placeholder="e.g. UGX 680,000 or $180" required>
+      </div>
+      <div>
+        <label>Transaction Reference / ID</label>
+        <input type="text" name="reference" placeholder="e.g. ABC123456 or mobile money transaction ID" required>
+      </div>
+      <div>
+        <label>Any message (optional)</label>
+        <textarea name="message" rows="3" placeholder="Any additional info..."></textarea>
+      </div>
+      <button type="submit">Submit Payment Confirmation</button>
+    </form>
+  </div>
+
+</div>
+
+<div class="footer">
+  Starhela WhatsApp Bot &mdash; Powered by AI &mdash; Contact: 0793 482 095
+</div>
+
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/static/sw.js').catch(()=>{});
+</script>
+</body>
+</html>

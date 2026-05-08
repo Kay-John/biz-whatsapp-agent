@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Starhela — Outreach Dashboard</title>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#7c3aed">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Starhela">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; color: #1a202c; }
+  .topbar { background: linear-gradient(135deg, #7c3aed, #db2777); color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+  .topbar h1 { font-size: 1.1rem; }
+  .topbar a { color: white; text-decoration: none; font-size: 0.85rem; opacity: 0.85; }
+  .container { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  .tab { padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; border: none; background: white; color: #4a5568; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .tab.active { background: #7c3aed; color: white; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); margin-bottom: 20px; }
+  .card h2 { font-size: 1rem; color: #7c3aed; margin-bottom: 16px; }
+  label { display: block; font-size: 0.85rem; font-weight: 600; color: #4a5568; margin-bottom: 6px; margin-top: 12px; }
+  input, textarea, select { width: 100%; padding: 11px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; outline: none; }
+  input:focus, textarea:focus { border-color: #7c3aed; }
+  .btn { padding: 11px 24px; border-radius: 8px; border: none; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+  .btn-primary { background: #7c3aed; color: white; margin-top: 14px; }
+  .btn-primary:hover { background: #6d28d9; }
+  .note { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 10px 14px; border-radius: 6px; font-size: 0.83rem; color: #92400e; margin-top: 12px; }
+  .alert-success { background: #ecfdf5; border-left: 4px solid #10b981; padding: 12px 16px; border-radius: 8px; color: #065f46; margin-bottom: 16px; font-size: 0.9rem; }
+  .alert-error { background: #fff5f5; border-left: 4px solid #fc8181; padding: 12px 16px; border-radius: 8px; color: #c53030; margin-bottom: 16px; font-size: 0.9rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th { text-align: left; padding: 10px 12px; background: #f7fafc; color: #4a5568; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
+  td { padding: 10px 12px; border-bottom: 1px solid #f0f4f8; }
+  tr:hover td { background: #f7fafc; }
+  .badge { padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
+  .badge-new { background: #e8f0fe; color: #1a56db; }
+  .badge-interested { background: #e6fffa; color: #0e9f6e; }
+  .badge-awaiting_screenshot { background: #fef3c7; color: #d97706; }
+  .badge-screenshot_received { background: #d1fae5; color: #065f46; }
+  .badge-opted_out { background: #fee2e2; color: #dc2626; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat-box { background: white; border-radius: 10px; padding: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .stat-box .number { font-size: 2rem; font-weight: bold; color: #7c3aed; }
+  .stat-box .label { font-size: 0.82rem; color: #718096; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Starhela — WhatsApp Bot Dashboard</h1>
+  <a href="/dashboard/logout">Sign Out</a>
+</div>
+
+<div class="container">
+
+  {% if message %}
+  <div class="alert-success">{{ message }}</div>
+  {% endif %}
+  {% if error %}
+  <div class="alert-error">{{ error }}</div>
+  {% endif %}
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-box">
+      <div class="number">{{ stats.total }}</div>
+      <div class="label">Total Leads</div>
+    </div>
+    <div class="stat-box">
+      <div class="number">{{ stats.interested }}</div>
+      <div class="label">Interested</div>
+    </div>
+    <div class="stat-box">
+      <div class="number">{{ stats.awaiting }}</div>
+      <div class="label">Awaiting Screenshot</div>
+    </div>
+    <div class="stat-box">
+      <div class="number">{{ stats.joined }}</div>
+      <div class="label">Joined ✅</div>
+    </div>
+    <div class="stat-box">
+      <div class="number">{{ stats.payments }}</div>
+      <div class="label">Payment Submissions</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('send', event)">Send Message</button>
+    <button class="tab" onclick="showTab('bulk', event)">Bulk Outreach</button>
+    <button class="tab" onclick="showTab('leads', event)">All Leads</button>
+    <button class="tab" onclick="showTab('payments', event)">Payment Submissions</button>
+  </div>
+
+  <!-- Send Single -->
+  <div id="tab-send" class="panel active">
+    <div class="card">
+      <h2>Send Opening Message to a New Number</h2>
+      <form method="POST" action="/dashboard/send">
+        <label>WhatsApp Number (with country code)</label>
+        <input type="tel" name="phone" placeholder="e.g. 256771234567" required>
+        <div class="note">
+          ⚠️ In sandbox mode, the recipient must have joined the Twilio sandbox first by sending the join code to +1 415 523 8886.
+        </div>
+        <button type="submit" class="btn btn-primary">Send Message</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Bulk Send -->
+  <div id="tab-bulk" class="panel">
+    <div class="card">
+      <h2>Bulk Outreach — Multiple Numbers</h2>
+      <form method="POST" action="/dashboard/send-bulk">
+        <label>Phone Numbers (one per line, with country code)</label>
+        <textarea name="phones" rows="8" placeholder="256771234567&#10;256782345678&#10;256793456789" required></textarea>
+        <div class="note">
+          ⚠️ Up to 50 numbers at a time. Sandbox restriction applies.
+        </div>
+        <button type="submit" class="btn btn-primary">Send to All</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Leads Table -->
+  <div id="tab-leads" class="panel">
+    <div class="card">
+      <h2>All Leads</h2>
+      {% if leads %}
+      <table>
+        <thead>
+          <tr>
+            <th>Phone</th>
+            <th>Status</th>
+            <th>Last Active</th>
+            <th>Followed Up</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lead in leads %}
+          <tr>
+            <td>{{ lead.phone }}</td>
+            <td><span class="badge badge-{{ lead.status }}">{{ lead.status }}</span></td>
+            <td>{{ lead.last_message_at[:16].replace('T',' ') if lead.last_message_at else '—' }}</td>
+            <td>{{ '✅' if lead.followed_up else '❌' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="color:#718096; font-size:0.9rem;">No leads yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Payment Submissions -->
+  <div id="tab-payments" class="panel">
+    <div class="card">
+      <h2>Payment Submissions</h2>
+      {% if payments %}
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Method</th>
+            <th>Amount</th>
+            <th>Reference</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in payments %}
+          <tr>
+            <td>{{ p.name }}</td>
+            <td>{{ p.phone }}</td>
+            <td>{{ p.method }}</td>
+            <td>{{ p.amount }}</td>
+            <td>{{ p.reference }}</td>
+            <td>{{ p.submitted_at[:10] if p.submitted_at else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="color:#718096; font-size:0.9rem;">No payment submissions yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<script>
+function showTab(name, event) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/static/sw.js').catch(()=>{});
+</script>
+</body>
+</html>

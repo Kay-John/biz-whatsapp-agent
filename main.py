@@ -2,8 +2,9 @@ import os
 import threading
 import time
 from datetime import datetime, timezone, timedelta
+from functools import wraps
 
-from flask import Flask, request
+from flask import Flask, request, session, redirect, render_template, send_from_directory
 from twilio.rest import Client as TwilioClient
 from twilio.twiml.messaging_response import MessagingResponse
 from anthropic import Anthropic
@@ -12,14 +13,35 @@ from supabase import create_client
 from client_config import BUSINESS_NAME, OWNER_PHONE, SYSTEM_PROMPT, FOLLOW_UP_MESSAGE
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "starhela-secret-2026")
 
 ai = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 twilio = TwilioClient(os.environ["TWILIO_ACCOUNT_SID"], os.environ["TWILIO_AUTH_TOKEN"])
 sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
 
 WHATSAPP_FROM = os.environ["TWILIO_WHATSAPP_FROM"]
-SMS_FROM = os.environ.get("TWILIO_SMS_FROM", "")
-CLIENT_ID = os.environ["CLIENT_ID"]  # unique ID per client deployment, stored in bot_clients table
+CLIENT_ID = os.environ["CLIENT_ID"]
+DASH_USER = os.environ.get("DASH_USERNAME", "Jusper001")
+DASH_PASS = os.environ.get("DASH_PASSWORD", "admin256")
+
+OUTREACH_MESSAGE = (
+    "👋 Hi! I came across your number and wanted to share something exciting.\n\n"
+    "I'm reaching out from *Starhela* — a digital earning platform where members "
+    "earn through surveys, tasks, games, and referrals. 💰\n\n"
+    "You can start earning today with just *$5*.\n\n"
+    "Interested to learn more? Just reply and I'll walk you through everything! 😊"
+)
+
+
+# ── Auth decorator ────────────────────────────────────────────────────────────
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("logged_in"):
+            return redirect("/dashboard/login")
+        return f(*args, **kwargs)
+    return decorated
 
 
 # ── Subscription check ────────────────────────────────────────────────────────
@@ -29,7 +51,6 @@ _expiry_notified = {"warned": False, "expired": False}
 
 
 def get_subscription():
-    """Return subscription record, cached for 30 minutes."""
     now = datetime.now(timezone.utc)
     cache = _subscription_cache
     if cache["checked_at"] and (now - cache["checked_at"]).seconds < 1800:
@@ -42,10 +63,6 @@ def get_subscription():
 
 
 def check_subscription():
-    """
-    Returns (is_active, days_remaining).
-    Also sends expiry warnings to owner when needed.
-    """
     record = get_subscription()
     if not record:
         return False, 0
@@ -56,7 +73,6 @@ def check_subscription():
 
     owner_wa = f"whatsapp:+256{OWNER_PHONE.lstrip('0')}"
 
-    # 3-day warning (send once)
     if 0 < days_remaining <= 3 and not _expiry_notified["warned"]:
         _expiry_notified["warned"] = True
         try:
@@ -72,7 +88,6 @@ def check_subscription():
         except Exception as e:
             print(f"Warning notification failed: {e}")
 
-    # Expired
     if days_remaining <= 0:
         if not _expiry_notified["expired"]:
             _expiry_notified["expired"] = True
@@ -114,21 +129,6 @@ def update_lead(phone, data):
     sb.table("bot_leads").update(data).eq("phone", phone).eq("client_id", CLIENT_ID).execute()
 
 
-# ── Notifications ─────────────────────────────────────────────────────────────
-
-def send_sms_alert(message):
-    """Send SMS alert to business owner."""
-    owner = f"+256{OWNER_PHONE.lstrip('0')}"
-    sms_from = os.environ.get("TWILIO_SMS_FROM", "")
-    if not sms_from:
-        print(f"[ALERT — set TWILIO_SMS_FROM to enable SMS]: {message}")
-        return
-    try:
-        twilio.messages.create(body=message, from_=sms_from, to=owner)
-    except Exception as e:
-        print(f"SMS alert failed: {e}")
-
-
 # ── AI response ───────────────────────────────────────────────────────────────
 
 def get_ai_reply(history, user_message):
@@ -157,7 +157,7 @@ def user_confirmed_joining(text):
     return any(k in t for k in JOINED_KEYWORDS)
 
 
-# ── Webhook ───────────────────────────────────────────────────────────────────
+# ── WhatsApp Webhook ──────────────────────────────────────────────────────────
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -168,16 +168,13 @@ def webhook():
 
     resp = MessagingResponse()
 
-    # Ignore empty text with no media (stickers, reactions, etc.)
     if not body and num_media == 0:
         return str(resp)
 
     # Subscription gate — disabled during testing, enable before going live
     # is_active, _ = check_subscription()
     # if not is_active:
-    #     resp.message(
-    #         "Sorry, this service is temporarily unavailable. Please try again later. 🙏"
-    #     )
+    #     resp.message("Sorry, this service is temporarily unavailable. Please try again later. 🙏")
     #     return str(resp)
 
     lead = get_or_create_lead(phone)
@@ -196,16 +193,9 @@ def webhook():
         resp.message(f"Welcome back! 😊 You're re-subscribed to {BUSINESS_NAME} updates. How can I help you today?")
         return str(resp)
 
-    # Screenshot received — handle for any status
+    # Screenshot received
     if num_media > 0:
         update_lead(phone, {"status": "screenshot_received", "screenshot_url": media_url})
-        # send_sms_alert(
-        #     f"✅ NEW MEMBER VERIFIED — {BUSINESS_NAME}\n"
-        #     f"Phone: {phone}\n"
-        #     f"Dashboard screenshot received.\n"
-        #     f"Screenshot: {media_url}\n"
-        #     f"Action: Verify their referral on your dashboard."
-        # )
         resp.message(
             "Thank you for the screenshot! 🎉\n\n"
             "Our team will verify your registration shortly. "
@@ -216,7 +206,6 @@ def webhook():
 
     # AI response
     reply = get_ai_reply(history, body)
-
     history = (history + [
         {"role": "user", "content": body},
         {"role": "assistant", "content": reply}
@@ -224,18 +213,151 @@ def webhook():
 
     if user_confirmed_joining(body) and status not in ["screenshot_received", "awaiting_screenshot"]:
         status = "awaiting_screenshot"
-        # send_sms_alert(
-        #     f"🔔 NEW SIGNUP — {BUSINESS_NAME}\n"
-        #     f"Phone: {phone}\n"
-        #     f"Confirmed joining and deposit. Waiting for dashboard screenshot."
-        # )
     elif status == "new":
         status = "interested"
 
     update_lead(phone, {"conversation_history": history, "status": status})
-
     resp.message(reply)
     return str(resp)
+
+
+# ── Subscribe page ────────────────────────────────────────────────────────────
+
+@app.route("/subscribe", methods=["GET", "POST"])
+def subscribe():
+    if request.method == "POST":
+        name      = request.form.get("name", "")
+        phone     = request.form.get("phone", "")
+        method    = request.form.get("method", "")
+        amount    = request.form.get("amount", "")
+        reference = request.form.get("reference", "")
+        message   = request.form.get("message", "")
+
+        sb.table("payment_submissions").insert({
+            "name": name, "phone": phone, "method": method,
+            "amount": amount, "reference": reference,
+            "message": message, "client_id": CLIENT_ID,
+            "submitted_at": datetime.now(timezone.utc).isoformat()
+        }).execute()
+
+        try:
+            twilio.messages.create(
+                body=(
+                    f"💰 *NEW PAYMENT SUBMISSION — {BUSINESS_NAME}*\n\n"
+                    f"Name: {name}\n"
+                    f"Phone: {phone}\n"
+                    f"Method: {method}\n"
+                    f"Amount: {amount}\n"
+                    f"Reference: {reference}\n"
+                    f"Message: {message or '—'}\n\n"
+                    f"Action: Verify payment and activate their subscription in Supabase."
+                ),
+                from_=WHATSAPP_FROM,
+                to="whatsapp:+256793482095"
+            )
+        except Exception as e:
+            print(f"Payment notification failed: {e}")
+
+        return render_template("subscribe.html", success=True)
+    return render_template("subscribe.html", success=False)
+
+
+# ── Dashboard auth ────────────────────────────────────────────────────────────
+
+@app.route("/dashboard/login", methods=["GET", "POST"])
+def dash_login():
+    if request.method == "POST":
+        if request.form.get("username") == DASH_USER and request.form.get("password") == DASH_PASS:
+            session["logged_in"] = True
+            return redirect("/dashboard")
+        return render_template("dash_login.html", error="Invalid username or password.")
+    return render_template("dash_login.html", error=None)
+
+
+@app.route("/dashboard/logout")
+def dash_logout():
+    session.clear()
+    return redirect("/dashboard/login")
+
+
+# ── Dashboard ─────────────────────────────────────────────────────────────────
+
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    leads = sb.table("bot_leads").select("*").eq("client_id", CLIENT_ID).order("last_message_at", desc=True).execute().data or []
+    payments = sb.table("payment_submissions").select("*").eq("client_id", CLIENT_ID).order("submitted_at", desc=True).execute().data or []
+
+    stats = {
+        "total": len(leads),
+        "interested": sum(1 for l in leads if l.get("status") == "interested"),
+        "awaiting": sum(1 for l in leads if l.get("status") == "awaiting_screenshot"),
+        "joined": sum(1 for l in leads if l.get("status") == "screenshot_received"),
+        "payments": len(payments)
+    }
+
+    return render_template(
+        "dashboard.html",
+        leads=leads,
+        payments=payments,
+        stats=stats,
+        message=request.args.get("msg"),
+        error=request.args.get("err")
+    )
+
+
+@app.route("/dashboard/send", methods=["POST"])
+@login_required
+def dashboard_send():
+    phone = request.form.get("phone", "").strip().lstrip("+")
+    if not phone:
+        return redirect("/dashboard?err=Phone+number+is+required")
+    try:
+        twilio.messages.create(
+            body=OUTREACH_MESSAGE,
+            from_=WHATSAPP_FROM,
+            to=f"whatsapp:+{phone}"
+        )
+        r = sb.table("bot_leads").select("id").eq("phone", f"+{phone}").eq("client_id", CLIENT_ID).execute()
+        if not r.data:
+            sb.table("bot_leads").insert({
+                "phone": f"+{phone}",
+                "client_id": CLIENT_ID,
+                "status": "new",
+                "conversation_history": [],
+                "opted_in": True
+            }).execute()
+        return redirect(f"/dashboard?msg=Message+sent+to+%2B{phone}")
+    except Exception as e:
+        return redirect(f"/dashboard?err={str(e)[:80]}")
+
+
+@app.route("/dashboard/send-bulk", methods=["POST"])
+@login_required
+def dashboard_send_bulk():
+    raw = request.form.get("phones", "")
+    phones = [p.strip().lstrip("+") for p in raw.splitlines() if p.strip()][:50]
+    sent, failed = 0, 0
+    for phone in phones:
+        try:
+            twilio.messages.create(
+                body=OUTREACH_MESSAGE,
+                from_=WHATSAPP_FROM,
+                to=f"whatsapp:+{phone}"
+            )
+            r = sb.table("bot_leads").select("id").eq("phone", f"+{phone}").eq("client_id", CLIENT_ID).execute()
+            if not r.data:
+                sb.table("bot_leads").insert({
+                    "phone": f"+{phone}",
+                    "client_id": CLIENT_ID,
+                    "status": "new",
+                    "conversation_history": [],
+                    "opted_in": True
+                }).execute()
+            sent += 1
+        except:
+            failed += 1
+    return redirect(f"/dashboard?msg=Sent+{sent}+messages.+{failed}+failed.")
 
 
 # ── Follow-up engine ──────────────────────────────────────────────────────────
@@ -276,11 +398,16 @@ def follow_up_engine():
 threading.Thread(target=follow_up_engine, daemon=True).start()
 
 
-# ── Health check ──────────────────────────────────────────────────────────────
+# ── Static & home ─────────────────────────────────────────────────────────────
+
+@app.route("/static/<path:filename>")
+def static_files(filename):
+    return send_from_directory("static", filename)
+
 
 @app.route("/")
 def home():
-    return f"{BUSINESS_NAME} WhatsApp Agent is live. ✅"
+    return f"{BUSINESS_NAME} WhatsApp Agent is live. ✅ | <a href='/subscribe'>Subscribe</a> | <a href='/dashboard'>Dashboard</a>"
 
 
 if __name__ == "__main__":
