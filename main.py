@@ -21,7 +21,7 @@ sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
 
 WHATSAPP_FROM = os.environ["TWILIO_WHATSAPP_FROM"]
 CLIENT_ID = os.environ["CLIENT_ID"]
-DASH_USER = os.environ.get("DASH_USERNAME", "Jusper001")
+DASH_USER = os.environ.get("DASH_USERNAME", "Philomine256")
 DASH_PASS = os.environ.get("DASH_PASSWORD", "admin256")
 
 OUTREACH_MESSAGE = (
